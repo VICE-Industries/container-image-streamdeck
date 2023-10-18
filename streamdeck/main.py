@@ -1,9 +1,10 @@
 # source: https://github.com/abcminiuser/python-elgato-streamdeck
-#
+
 import os
 import threading
 
 from PIL import Image, ImageDraw, ImageFont
+import requests
 from StreamDeck.DeviceManager import DeviceManager
 from StreamDeck.ImageHelpers import PILHelper
 
@@ -24,7 +25,13 @@ def render_key_image(deck, icon_filename, font_filename, label_text):
     # label onto the image a few pixels from the bottom of the key.
     draw = ImageDraw.Draw(image)
     font = ImageFont.truetype(font_filename, 14)
-    draw.text((image.width / 2, image.height - 5), text=label_text, font=font, anchor="ms", fill="white")
+    draw.text(
+        (image.width / 2, image.height - 5),
+        text=label_text,
+        font=font,
+        anchor="ms",
+        fill="white",
+    )
 
     return PILHelper.to_native_format(deck, image)
 
@@ -49,7 +56,7 @@ def get_key_style(deck, key, state):
         "name": name,
         "icon": os.path.join(ASSETS_PATH, icon),
         "font": os.path.join(ASSETS_PATH, font),
-        "label": label
+        "label": label,
     }
 
 
@@ -60,7 +67,9 @@ def update_key_image(deck, key, state):
     key_style = get_key_style(deck, key, state)
 
     # Generate the custom key with the requested image and label.
-    image = render_key_image(deck, key_style["icon"], key_style["font"], key_style["label"])
+    image = render_key_image(
+        deck, key_style["icon"], key_style["font"], key_style["label"]
+    )
 
     # Use a scoped-with on the deck to ensure we're the only thread using it
     # right now.
@@ -72,6 +81,12 @@ def update_key_image(deck, key, state):
 # Prints key state change information, updates rhe key image and performs any
 # associated actions when a key is pressed.
 def key_change_callback(deck, key, state):
+    red_key_index = 0
+    green_key_index = 1
+    blue_key_index = 2
+
+    url = "http://192.168.88.201/color"
+
     # Print new key state
     print("Deck {} Key {} = {}".format(deck.id(), key, state), flush=True)
 
@@ -82,8 +97,21 @@ def key_change_callback(deck, key, state):
     if state:
         key_style = get_key_style(deck, key, state)
 
+        if key == red_key_index:
+            print("Color is now RED")
+            requests.post(f"{url}?red=255&green=0&blue=0")
+        elif key == green_key_index:
+            print("Color is now GREEN")
+            requests.post(f"{url}?red=0&green=255&blue=0")
+        elif key == blue_key_index:
+            print("Color is now BLUE")
+            requests.post(f"{url}?red=0&green=0&blue=255")
+
         # When an exit button is pressed, close the application.
         if key_style["name"] == "exit":
+            print("Color is now OFF")
+            requests.post(f"{url}?red=0&green=0&blue=0")
+
             # Use a scoped-with on the deck to ensure we're the only thread
             # using it right now.
             with deck:
@@ -107,9 +135,11 @@ if __name__ == "__main__":
         deck.open()
         deck.reset()
 
-        print("Opened '{}' device (serial number: '{}', fw: '{}')".format(
-            deck.deck_type(), deck.get_serial_number(), deck.get_firmware_version()
-        ))
+        print(
+            "Opened '{}' device (serial number: '{}', fw: '{}')".format(
+                deck.deck_type(), deck.get_serial_number(), deck.get_firmware_version()
+            )
+        )
 
         # Set initial screen brightness to 30%.
         deck.set_brightness(30)

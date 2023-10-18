@@ -5,6 +5,7 @@ name = "pypi"
 
 [packages]
 Pillow = "==10.1.0"
+requests = "==2.31.0"
 streamdeck = "==0.9.4"
 
 [dev-packages]
