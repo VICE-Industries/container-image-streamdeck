@@ -4,7 +4,7 @@ FROM python:${PYTHON_VERSION}-slim
 ARG USER_ID=45000
 ARG GROUP_ID=45000
 
-COPY main.py Pipfile* /
+COPY healthcheck.py main.py Pipfile* /
 COPY Assets/ /Assets
 WORKDIR /
 
@@ -12,6 +12,8 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends \
          libhidapi-libusb0 \
          libusb-1.0-0 \
+         psmisc \
+         usbutils \
     && groupadd -g $GROUP_ID dragon \
     && useradd -g dragon -u $USER_ID -m -d /var/lib/dragon dragon \
     && usermod -a -G plugdev dragon \
@@ -24,5 +26,8 @@ RUN pipenv install --system --deploy
 USER dragon
 
 CMD python3 /main.py
+
+HEALTHCHECK --interval=5s \
+  CMD python3 /healthcheck.py
 
 LABEL "org.opencontainers.image.vendor"="23 Technologies GmbH"

@@ -1,8 +1,11 @@
-# source: https://github.com/abcminiuser/python-elgato-streamdeck
+# based on https://github.com/abcminiuser/python-elgato-streamdeck
 
+from functools import partial
 import os
+import signal
 import threading
 
+from loguru import logger
 from PIL import Image, ImageDraw, ImageFont
 import requests
 from StreamDeck.DeviceManager import DeviceManager
@@ -10,6 +13,12 @@ from StreamDeck.ImageHelpers import PILHelper
 
 # Folder location of image assets used by this example.
 ASSETS_PATH = os.path.join(os.path.dirname(__file__), "Assets")
+
+
+def sigterm_handler(signum, frame, deck):
+    logger.info("SIGTERM received")
+    deck.reset()
+    deck.close()
 
 
 # Generates a custom tile with run-time generated text and custom image via the
@@ -88,7 +97,7 @@ def key_change_callback(deck, key, state):
     url = "http://192.168.88.201/color"
 
     # Print new key state
-    print("Deck {} Key {} = {}".format(deck.id(), key, state), flush=True)
+    logger.info("Deck {} Key {} = {}".format(deck.id(), key, state), flush=True)
 
     # Update the key image based on the new key state.
     update_key_image(deck, key, state)
@@ -98,18 +107,18 @@ def key_change_callback(deck, key, state):
         key_style = get_key_style(deck, key, state)
 
         if key == red_key_index:
-            print("Color is now RED")
+            logger.info("Color is now RED")
             requests.post(f"{url}?red=255&green=0&blue=0")
         elif key == green_key_index:
-            print("Color is now GREEN")
+            logger.info("Color is now GREEN")
             requests.post(f"{url}?red=0&green=255&blue=0")
         elif key == blue_key_index:
-            print("Color is now BLUE")
+            logger.info("Color is now BLUE")
             requests.post(f"{url}?red=0&green=0&blue=255")
 
         # When an exit button is pressed, close the application.
         if key_style["name"] == "exit":
-            print("Color is now OFF")
+            logger.info("Color is now OFF")
             requests.post(f"{url}?red=0&green=0&blue=0")
 
             # Use a scoped-with on the deck to ensure we're the only thread
@@ -125,17 +134,20 @@ def key_change_callback(deck, key, state):
 if __name__ == "__main__":
     streamdecks = DeviceManager().enumerate()
 
-    print("Found {} Stream Deck(s).\n".format(len(streamdecks)))
+    logger.info("Found {} Stream Deck(s).\n".format(len(streamdecks)))
 
     for index, deck in enumerate(streamdecks):
         # This example only works with devices that have screens.
         if not deck.is_visual():
             continue
 
+        # We only have 1 streamdeck inside the pod
+        signal.signal(signal.SIGTERM, partial(sigterm_handler, deck=deck))
+
         deck.open()
         deck.reset()
 
-        print(
+        logger.info(
             "Opened '{}' device (serial number: '{}', fw: '{}')".format(
                 deck.deck_type(), deck.get_serial_number(), deck.get_firmware_version()
             )
