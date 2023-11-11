@@ -19,7 +19,11 @@ ASSETS_PATH = os.path.join(os.path.dirname(__file__), "Assets")
 ADDRESS_LED = os.environ.get("ADDRESS_LED", "192.168.88.201")
 ADDRESS_GATEWAY = os.environ.get("ADDRESS_GATEWAY", "192.168.88.20")
 
-U1 = ModbusClient(host=ADDRESS_GATEWAY, unit_id=1, auto_open=True, debug=True)
+
+def get_modbus_client():
+    return ModbusClient(
+        host=ADDRESS_GATEWAY, unit_id=1, auto_open=True, auto_close=True, timeout=0.5
+    )
 
 
 def sigterm_handler(signum, frame, deck):
@@ -126,13 +130,19 @@ def key_change_callback(deck, key, state):
             logger.info("Color is now BLUE")
             requests.post(f"{url_led}?red=0&green=0&blue=255")
         elif key == left_key_index:
-            U1.write_single_coil(0x00, True)
+            u1 = get_modbus_client()
+            u1.write_single_coil(0x00, True)
             time.sleep(3)
-            U1.write_single_coil(0x00, False)
+
+            u1 = get_modbus_client()
+            u1.write_single_coil(0x00, False)
         elif key == right_key_index:
-            U1.write_single_coil(0x01, True)
+            u1 = get_modbus_client()
+            u1.write_single_coil(0x01, True)
             time.sleep(3)
-            U1.write_single_coil(0x01, False)
+
+            u1 = get_modbus_client()
+            u1.write_single_coil(0x01, False)
 
         # When an exit button is pressed, close the application.
         if key_style["name"] == "exit":
@@ -140,8 +150,9 @@ def key_change_callback(deck, key, state):
             requests.post(f"{url_led}?red=0&green=0&blue=0")
 
             logger.info("Transport is now OFF")
-            U1.write_single_coil(0x00, False)
-            U1.write_single_coil(0x01, False)
+            u1 = get_modbus_client()
+            u1.write_single_coil(0x00, False)
+            u1.write_single_coil(0x01, False)
 
             # Use a scoped-with on the deck to ensure we're the only thread
             # using it right now.
