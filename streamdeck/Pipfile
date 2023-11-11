@@ -4,8 +4,9 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-loguru = "==0.7.2"
 Pillow = "==10.1.0"
+loguru = "==0.7.2"
+pyModbusTCP = "==0.2.0"
 requests = "==2.31.0"
 streamdeck = "==0.9.4"
 

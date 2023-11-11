@@ -4,8 +4,10 @@ from functools import partial
 import os
 import signal
 import threading
+import time
 
 from loguru import logger
+from pyModbusTCP.client import ModbusClient
 from PIL import Image, ImageDraw, ImageFont
 import requests
 from StreamDeck.DeviceManager import DeviceManager
@@ -13,6 +15,11 @@ from StreamDeck.ImageHelpers import PILHelper
 
 # Folder location of image assets used by this example.
 ASSETS_PATH = os.path.join(os.path.dirname(__file__), "Assets")
+
+ADDRESS_LED = os.environ.get("ADDRESS_LED", "192.168.88.201")
+ADDRESS_GATEWAY = os.environ.get("ADDRESS_GATEWAY", "192.168.88.20")
+
+U1 = ModbusClient(host=ADDRESS_GATEWAY, unit_id=1, auto_open=True, debug=True)
 
 
 def sigterm_handler(signum, frame, deck):
@@ -94,7 +101,10 @@ def key_change_callback(deck, key, state):
     green_key_index = 1
     blue_key_index = 2
 
-    url = "http://192.168.88.201/color"
+    left_key_index = 3
+    right_key_index = 4
+
+    url_led = f"http://{ADDRESS_LED}/color"
 
     # Print new key state
     logger.info("Deck {} Key {} = {}".format(deck.id(), key, state), flush=True)
@@ -108,18 +118,30 @@ def key_change_callback(deck, key, state):
 
         if key == red_key_index:
             logger.info("Color is now RED")
-            requests.post(f"{url}?red=255&green=0&blue=0")
+            requests.post(f"{url_led}?red=255&green=0&blue=0")
         elif key == green_key_index:
             logger.info("Color is now GREEN")
-            requests.post(f"{url}?red=0&green=255&blue=0")
+            requests.post(f"{url_led}?red=0&green=255&blue=0")
         elif key == blue_key_index:
             logger.info("Color is now BLUE")
-            requests.post(f"{url}?red=0&green=0&blue=255")
+            requests.post(f"{url_led}?red=0&green=0&blue=255")
+        elif key == left_key_index:
+            U1.write_single_coil(0x00, True)
+            time.sleep(3)
+            U1.write_single_coil(0x00, False)
+        elif key == right_key_index:
+            U1.write_single_coil(0x01, True)
+            time.sleep(3)
+            U1.write_single_coil(0x01, False)
 
         # When an exit button is pressed, close the application.
         if key_style["name"] == "exit":
             logger.info("Color is now OFF")
-            requests.post(f"{url}?red=0&green=0&blue=0")
+            requests.post(f"{url_led}?red=0&green=0&blue=0")
+
+            logger.info("Transport is now OFF")
+            U1.write_single_coil(0x00, False)
+            U1.write_single_coil(0x01, False)
 
             # Use a scoped-with on the deck to ensure we're the only thread
             # using it right now.
