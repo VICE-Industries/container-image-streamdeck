@@ -1,0 +1,14 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+loguru = "==0.7.2"
+pyModbusTCP = "==0.2.0"
+requests = "==2.31.0"
+
+[dev-packages]
+
+[requires]
+python_version = "3.11"
