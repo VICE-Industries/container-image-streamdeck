@@ -1,0 +1,22 @@
+FROM ubuntu:22.04
+
+ARG USER_ID=45000
+ARG GROUP_ID=45000
+
+WORKDIR /
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+         ffmpeg \
+         v4l-utils \
+    && groupadd -g $GROUP_ID dragon \
+    && useradd -g dragon -u $USER_ID -m -d /var/lib/dragon dragon \
+    && usermod -a -G video dragon \
+    && apt-get clean \
+    && rm -rf /var/cache/apt /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+USER dragon
+
+CMD ffmpeg -i /dev/video0 -f rtsp -rtsp_transport tcp rtsp://mediamtx:8554/vice
+
+LABEL "org.opencontainers.image.vendor"="23 Technologies GmbH"
